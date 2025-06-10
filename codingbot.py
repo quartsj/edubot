@@ -108,4 +108,4 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
-            st.rerun()  # rerun 최신 함수로 변경
+            st.experimental_rerun()  # rerun 최신 함수로 변경

@@ -96,9 +96,12 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             )
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            # 챗봇이 답변 완료 후 입력창 초기화
+            st.session_state.chat_input = ""
+
         except Exception as e:
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
-            # ✅ 여기서 직접 세션 상태를 바꾸는 대신 rerun을 유도
             st.rerun()

@@ -14,7 +14,7 @@ st.title("GPT-4.1 Mini 챗봇")
 
 # === 초기 세션 상태 설정 ===
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": "당신은 친절한 AI 챗봇입니다."}]
+    st.session_state.messages = [{"role": "system", "content": "당신은 코딩 교육을 위한 챗봇 AI입니다.당신의 역할은 초보자에게 낯설 수 있는 코딩 용어들을 이해하기 쉽게 자연어로 가르쳐주는 것입니다."}]
 if "chat_input" not in st.session_state:
     st.session_state.chat_input = ""
 

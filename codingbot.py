@@ -84,7 +84,6 @@ else:
 # === GPT 응답 처리 ===
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input:
     st.session_state.is_thinking = True
-    st.session_state.chat_input = user_input
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.spinner("GPT가 생각 중입니다..."):

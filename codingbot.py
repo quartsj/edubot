@@ -1,7 +1,6 @@
 #코딩 교육 챗봇은 이곳에 작성해주세요.
 pip install openai
 import streamlit as st
-import openai
 from openai import OpenAI
 
 st.set_page_config(page_title="GPT-4.1 Mini 챗봇", layout="centered")

@@ -79,22 +79,21 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.is_thinking = True  # 응답 중 상태 ON
 
-    with st.spinner("🤔 GPT가 생각 중이에요..."):
-        try:
-            client = OpenAI(api_key=st.session_state.api_key)
-            response = client.chat.completions.create(
-                model=model,
-                messages=st.session_state.messages,
-                temperature=temperature,
-                max_tokens=500,
-            )
-            reply = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-            st.session_state.chat_input = ""  # 입력창 초기화
+with st.spinner("🤔 GPT가 생각 중이에요..."):
+    try:
+        client = OpenAI(api_key=st.session_state.api_key)
+        response = client.chat.completions.create(
+            model=model,
+            messages=st.session_state.messages,
+            temperature=temperature,
+            max_tokens=500,
+        )
+        reply = response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.chat_input = ""  # 입력창 초기화
 
-        except Exception as e:
-            st.error(f"오류 발생: {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
+    except Exception as e:
+        st.error(f"오류 발생: {e}")  # ✅ 여기만 수정
 
-        finally:
-            st.session_state.is_thinking = False  # 응답 끝나면 다시 입력 가능
-
+    finally:
+        st.session_state.is_thinking = False

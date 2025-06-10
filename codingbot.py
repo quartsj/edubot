@@ -53,7 +53,8 @@ for msg in st.session_state.messages[1:]:
 # === 사용자 입력 ===
 user_input = st.text_input("메시지를 입력하세요:", value=st.session_state.chat_input, key="chat_input_box")
 
-if user_input and st.session_state.api_key:
+# === '물어보기' 버튼 추가 ===
+if st.button("💬 물어보기") and user_input and st.session_state.api_key:
     # 입력값 저장 후 초기화
     st.session_state.chat_input = user_input
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -72,4 +73,3 @@ if user_input and st.session_state.api_key:
 
     except Exception as e:
         st.error(f"오류 발생: {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
-

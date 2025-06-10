@@ -20,11 +20,10 @@ if "chat_input" not in st.session_state:
 
 # === 모델 및 temperature 설정 ===
 model = st.selectbox("사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1, key="chat_model")
-temperature = st.slider("창의성(temperature) 설정:", 0.0, 1.0, 0.7, step=0.1, key="chat_temp")
 
 # === Clear 버튼 ===
 if st.button("🧹 Clear 대화 초기화"):
-    st.session_state.messages = [{"role": "system", "content": "당신은 친절한 AI 챗봇입니다."}]
+    st.session_state.messages = [{"role": "system", "content": "당신은 코딩 교육을 위한 챗봇 AI입니다.당신의 역할은 초보자에게 낯설 수 있는 코딩 용어들을 이해하기 쉽게 자연어로 가르쳐주는 것입니다."}]
     st.session_state.chat_input = ""
 
 # === 이전 메시지 출력 ===

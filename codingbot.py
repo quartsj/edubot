@@ -79,7 +79,11 @@ if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
     user_input = None
 else:
-    user_input = st.text_input("메시지를 입력하세요:", key="chat_input")
+    user_input = st.text_input(
+        "메시지를 입력하세요:",
+        key="chat_input",
+        value=st.session_state.chat_input  # 여기서 상태와 연결
+    )
 
 # === GPT 응답 처리 ===
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input:
@@ -97,11 +101,11 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
-            # 챗봇이 답변 완료 후 입력창 초기화
+            # 답변 후 입력창 상태 초기화
             st.session_state.chat_input = ""
 
         except Exception as e:
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
-            st.rerun()
+            st.rerun()  # rerun 최신 함수로 변경

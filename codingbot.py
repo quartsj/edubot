@@ -1,4 +1,5 @@
 #코딩 교육 챗봇은 이곳에 작성해주세요.
+pip install openai
 import streamlit as st
 import openai
 from openai import OpenAI

@@ -101,4 +101,4 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
         finally:
             st.session_state.is_thinking = False
             # ✅ 여기서 직접 세션 상태를 바꾸는 대신 rerun을 유도
-            st.experimental_rerun()
+            st.rerun()

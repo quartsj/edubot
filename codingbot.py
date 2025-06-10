@@ -74,15 +74,15 @@ for msg in st.session_state.messages[1:]:
     elif msg["role"] == "assistant":
         st.markdown(f"**🤖 GPT:** {msg['content']}")
 
-# 입력창 제어 (중요! value= 세션 상태와 연결)
+# 입력창 제어 (value 파라미터 제거)
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
     user_input = None
 else:
     user_input = st.text_input(
         "메시지를 입력하세요:",
-        key="chat_input",
-        value=st.session_state.chat_input  # 세션 상태와 동기화
+        key="chat_input"
+        # value= 제거!
     )
 
 # GPT 응답 처리

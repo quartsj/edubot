@@ -91,23 +91,23 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.spinner("GPT가 생각 중입니다..."):
-       try:
+        try:
             response = st.session_state.client.chat.completions.create(
-            model=model,
-            messages=st.session_state.messages,
-            temperature=temperature,
-            max_tokens=500,
-     )
-      reply = response.choices[0].message.content
-      st.session_state.messages.append({"role": "assistant", "content": reply})
+                model=model,
+                messages=st.session_state.messages,
+                temperature=temperature,
+                max_tokens=500,
+            )
+            reply = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": reply})
 
-# ✅ 입력창 초기화는 여기서 확실하게
-      st.session_state.chat_input = ""
+            # ✅ 입력창 초기화는 여기서 확실하게
+            st.session_state.chat_input = ""
 
-  except Exception as e:
-      st.error(f"오류 발생: {e}")
-   finally:
-      st.session_state.is_thinking = False
+        except Exception as e:
+            st.error(f"오류 발생: {e}")
+        finally:
+            st.session_state.is_thinking = False
 
-# ✅ 여기서 rerun (입력창도 비워진 상태에서 다시 시작됨)
-st.rerun()
+    # ✅ 여기서 rerun (입력창도 비워진 상태에서 다시 시작됨)
+    st.rerun()

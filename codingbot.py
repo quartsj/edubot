@@ -74,18 +74,14 @@ for msg in st.session_state.messages[1:]:
     elif msg["role"] == "assistant":
         st.markdown(f"**🤖 GPT:** {msg['content']}")
 
-# 입력창 제어 (value 파라미터 제거)
+# === 입력창 ===
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
     user_input = None
 else:
-    user_input = st.text_input(
-        "메시지를 입력하세요:",
-        key="chat_input"
-        # value= 제거!
-    )
+    user_input = st.text_input("메시지를 입력하세요:", key="chat_input")  # ✅ value 제거
 
-# GPT 응답 처리
+# === GPT 응답 처리 ===
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input:
     st.session_state.is_thinking = True
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -101,7 +97,7 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
-            # ✅ 입력창 초기화는 여기서 확실하게
+            # ✅ 입력창 상태 초기화
             st.session_state.chat_input = ""
 
         except Exception as e:
@@ -109,5 +105,5 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
         finally:
             st.session_state.is_thinking = False
 
-    # ✅ 여기서 rerun (입력창도 비워진 상태에서 다시 시작됨)
+    # ✅ rerun은 마지막에 실행
     st.rerun()

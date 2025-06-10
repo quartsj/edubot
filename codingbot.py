@@ -1,8 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 
-# 페이지 설정
-st.set_page_config(page_title="GPT-4 튜터 챗봇", layout="centered")
+st.set_page_config(page_title="GPT-4.1 Mini 챗봇", layout="centered")
 
 # === 초기 시스템 프롬프트 ===
 default_system_prompt = """
@@ -36,44 +35,43 @@ default_system_prompt = """
 # === 세션 상태 초기화 ===
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
+if "client" not in st.session_state:
+    st.session_state.client = None
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
 if "is_thinking" not in st.session_state:
     st.session_state.is_thinking = False
-if "client" not in st.session_state:
-    st.session_state.client = None
 
-# === API Key 입력 ===
+# === UI ===
+st.title("GPT-4 튜터 챗봇")
+
+# API Key 입력
 st.session_state.api_key = st.text_input("🔑 OpenAI API Key를 입력하세요:", type="password", value=st.session_state.api_key)
 
-# === OpenAI 클라이언트 초기화 ===
+# 클라이언트 생성
 if st.session_state.api_key and st.session_state.client is None:
     try:
         st.session_state.client = OpenAI(api_key=st.session_state.api_key)
     except Exception as e:
         st.error(f"OpenAI 클라이언트 초기화 실패: {e}")
 
-# === 타이틀 및 모델 선택 ===
-st.title("GPT-4 튜터 챗봇")
+# 모델 선택
 model = st.selectbox("🧠 사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4-turbo"], index=1)
 temperature = 0.7
 
-# === Clear 버튼 ===
+# Clear 버튼
 if st.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.is_thinking = False
 
-# === 이전 메시지 출력 ===
-for msg in st.session_state.messages:
-    if msg["role"] == "system":
-        continue
+# 이전 메시지 출력
+for msg in st.session_state.messages[1:]:
     with st.chat_message("user" if msg["role"] == "user" else "assistant"):
         st.markdown(msg["content"])
 
-# === 입력창 ===
+# === 입력창 및 GPT 호출 ===
 user_input = st.chat_input("메시지를 입력하세요:", disabled=st.session_state.is_thinking)
 
-# === GPT 호출 ===
 if user_input and st.session_state.api_key and st.session_state.client:
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.is_thinking = True

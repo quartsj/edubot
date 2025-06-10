@@ -45,6 +45,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
 if "chat_input" not in st.session_state:
     st.session_state.chat_input = ""
+if "is_thinking" not in st.session_state:
+    st.session_state.is_thinking = False
 
 # === 모델 및 temperature 설정 ===
 model = st.selectbox("사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1, key="chat_model")
@@ -54,6 +56,7 @@ temperature = 0.7  # 안정적인 창의성 제공
 if st.button("🧹 Clear 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.chat_input = ""
+    st.session_state.is_thinking = False
 
 # === 이전 메시지 출력 ===
 for msg in st.session_state.messages[1:]:
@@ -63,25 +66,35 @@ for msg in st.session_state.messages[1:]:
         st.markdown(f"**🤖 GPT:** {msg['content']}")
 
 # === 사용자 입력 ===
-user_input = st.text_input("메시지를 입력하세요:", value=st.session_state.chat_input, key="chat_input_box")
+user_input = st.text_input(
+    "메시지를 입력하세요:",
+    value=st.session_state.chat_input,
+    key="chat_input_box",
+    disabled=st.session_state.is_thinking  # GPT가 응답 중일 때 비활성화
+)
 
-# === '물어보기' 버튼 추가 ===
-if st.button("💬 물어보기") and user_input and st.session_state.api_key:
-    # 입력값 저장 후 초기화
+# === '물어보기' 버튼 ===
+if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input and st.session_state.api_key:
     st.session_state.chat_input = user_input
     st.session_state.messages.append({"role": "user", "content": user_input})
+    st.session_state.is_thinking = True  # 응답 중 상태 ON
 
-    try:
-        client = OpenAI(api_key=st.session_state.api_key)
-        response = client.chat.completions.create(
-            model=model,
-            messages=st.session_state.messages,
-            temperature=temperature,
-            max_tokens=500,
-        )
-        reply = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.session_state.chat_input = ""  # 입력창 초기화
+    with st.spinner("🤔 GPT가 생각 중이에요..."):
+        try:
+            client = OpenAI(api_key=st.session_state.api_key)
+            response = client.chat.completions.create(
+                model=model,
+                messages=st.session_state.messages,
+                temperature=temperature,
+                max_tokens=500,
+            )
+            reply = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+            st.session_state.chat_input = ""  # 입력창 초기화
 
-    except Exception as e:
-        st.error(f"오류 발생: {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
+        except Exception as e:
+            st.error(f"오류 발생: {str(e).encode('utf-8', errors='ignore').decode('utf-8')}")
+
+        finally:
+            st.session_state.is_thinking = False  # 응답 끝나면 다시 입력 가능
+

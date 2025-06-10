@@ -1,9 +1,17 @@
 import streamlit as st
-from openai import OpenAI
+import openai
+import time
 
+# 페이지 설정
 st.set_page_config(page_title="GPT-4.1 Mini 챗봇", layout="centered")
 
-# === 초기 시스템 프롬프트 ===
+# === API Key 입력 및 세션 상태 저장 ===
+if "api_key" not in st.session_state:
+    st.session_state.api_key = ""
+api_key_input = st.text_input("OpenAI API Key를 입력하세요:", type="password", value=st.session_state.api_key)
+st.session_state.api_key = api_key_input
+
+# === 초기 시스템 메시지 ===
 default_system_prompt = """
 너는 이제부터 학생을 도와주는 **코드를 쉽게 분석해주는 튜터** 역할을 해.
 너의 목표는 학생이 코드의 작동 원리를 스스로 이해할 수 있도록 돕는 거야.
@@ -32,60 +40,66 @@ default_system_prompt = """
 - 학생이 수동적으로 듣게 만들지 말고, 계속 질문을 던져서 능동적으로 참여하게 해.
 """
 
-# === 세션 상태 초기화 ===
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
-if "client" not in st.session_state:
-    st.session_state.client = None
+# === 초기 세션 상태 설정 ===
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
+if "chat_input" not in st.session_state:
+    st.session_state.chat_input = ""
 if "is_thinking" not in st.session_state:
     st.session_state.is_thinking = False
 
-# === UI ===
-st.title("GPT-4 튜터 챗봇")
+# === 모델 및 temperature 설정 ===
+model = st.selectbox("사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1, key="chat_model")
+temperature = 0.7  # 안정적인 창의성 제공
 
-# API Key 입력
-st.session_state.api_key = st.text_input("🔑 OpenAI API Key를 입력하세요:", type="password", value=st.session_state.api_key)
-
-# 클라이언트 생성
-if st.session_state.api_key and st.session_state.client is None:
-    try:
-        st.session_state.client = OpenAI(api_key=st.session_state.api_key)
-    except Exception as e:
-        st.error(f"OpenAI 클라이언트 초기화 실패: {e}")
-
-# 모델 선택
-model = st.selectbox("🧠 사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4-turbo"], index=1)
-temperature = 0.7
-
-# Clear 버튼
-if st.button("🧹 대화 초기화"):
+# === Clear 버튼 ===
+if st.button("🧹 Clear 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
+    st.session_state.chat_input = ""
     st.session_state.is_thinking = False
 
-# 이전 메시지 출력
+# === 이전 메시지 출력 ===
 for msg in st.session_state.messages[1:]:
-    with st.chat_message("user" if msg["role"] == "user" else "assistant"):
-        st.markdown(msg["content"])
+    if msg["role"] == "user":
+        st.markdown(f"**🧑 사용자:** {msg['content']}")
+    elif msg["role"] == "assistant":
+        st.markdown(f"**🤖 GPT:** {msg['content']}")
 
-# === 입력창 및 GPT 호출 ===
-user_input = st.chat_input("메시지를 입력하세요:", disabled=st.session_state.is_thinking)
+# === 사용자 입력 ===
+user_input = st.text_input(
+    "메시지를 입력하세요:",
+    value=st.session_state.chat_input,
+    key="chat_input_box",
+    disabled=st.session_state.is_thinking  # GPT가 응답 중일 때 비활성화
+)
 
-if user_input and st.session_state.api_key and st.session_state.client:
+# === '물어보기' 버튼 ===
+if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input and st.session_state.api_key:
+    st.session_state.chat_input = user_input
     st.session_state.messages.append({"role": "user", "content": user_input})
-    st.session_state.is_thinking = True
+    st.session_state.is_thinking = True  # 응답 중 상태 ON
 
+    # 응답을 실시간으로 받아오기 위한 스트리밍 처리
     with st.spinner("🤔 GPT가 생각 중이에요..."):
         try:
-            response = st.session_state.client.chat.completions.create(
+            openai.api_key = st.session_state.api_key
+            response = openai.ChatCompletion.create(
                 model=model,
                 messages=st.session_state.messages,
                 temperature=temperature,
                 max_tokens=500,
+                stream=True,  # 스트리밍 활성화
             )
-            reply = response.choices[0].message.content
+
+            reply = ""
+            for chunk in response:
+                if "content" in chunk["choices"][0]["delta"]:
+                    reply += chunk["choices"][0]["delta"]["content"]
+                    st.markdown(f"**🤖 GPT:** {reply}", unsafe_allow_html=True)
+                    time.sleep(0.1)  # 응답이 너무 빠르게 출력되지 않도록 잠시 대기
+
             st.session_state.messages.append({"role": "assistant", "content": reply})
+            st.session_state.chat_input = ""  # 입력창 초기화
 
         except Exception as e:
             st.error(f"오류 발생: {e}")

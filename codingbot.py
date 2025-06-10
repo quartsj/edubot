@@ -1,17 +1,10 @@
 import streamlit as st
 from openai import OpenAI
 
-st.set_page_config(page_title="GPT-4.1 Mini 챗봇", layout="centered")
+# 페이지 설정
+st.set_page_config(page_title="GPT-4 튜터 챗봇", layout="centered")
 
-# === API Key 입력 및 세션 상태 저장 ===
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
-api_key_input = st.text_input("OpenAI API Key를 입력하세요:", type="password", value=st.session_state.api_key)
-st.session_state.api_key = api_key_input
-
-st.title("GPT-4.1 Mini 챗봇")
-
-# === 초기 시스템 메시지 ===
+# === 초기 시스템 프롬프트 ===
 default_system_prompt = """
 너는 이제부터 학생을 도와주는 **코드를 쉽게 분석해주는 튜터** 역할을 해.
 너의 목표는 학생이 코드의 작동 원리를 스스로 이해할 수 있도록 돕는 거야.
@@ -40,49 +33,54 @@ default_system_prompt = """
 - 학생이 수동적으로 듣게 만들지 말고, 계속 질문을 던져서 능동적으로 참여하게 해.
 """
 
-# === 초기 세션 상태 설정 ===
+# === 세션 상태 초기화 ===
+if "api_key" not in st.session_state:
+    st.session_state.api_key = ""
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
-if "chat_input" not in st.session_state:
-    st.session_state.chat_input = ""
 if "is_thinking" not in st.session_state:
     st.session_state.is_thinking = False
+if "client" not in st.session_state:
+    st.session_state.client = None
 
-# === 모델 및 temperature 설정 ===
-model = st.selectbox("사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1, key="chat_model")
-temperature = 0.7  # 안정적인 창의성 제공
+# === API Key 입력 ===
+st.session_state.api_key = st.text_input("🔑 OpenAI API Key를 입력하세요:", type="password", value=st.session_state.api_key)
+
+# === OpenAI 클라이언트 초기화 ===
+if st.session_state.api_key and st.session_state.client is None:
+    try:
+        st.session_state.client = OpenAI(api_key=st.session_state.api_key)
+    except Exception as e:
+        st.error(f"OpenAI 클라이언트 초기화 실패: {e}")
+
+# === 타이틀 및 모델 선택 ===
+st.title("GPT-4 튜터 챗봇")
+model = st.selectbox("🧠 사용할 모델을 선택하세요:", ["gpt-3.5-turbo", "gpt-4-turbo"], index=1)
+temperature = 0.7
 
 # === Clear 버튼 ===
-if st.button("🧹 Clear 대화 초기화"):
+if st.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
-    st.session_state.chat_input = ""
     st.session_state.is_thinking = False
 
 # === 이전 메시지 출력 ===
-for msg in st.session_state.messages[1:]:
-    if msg["role"] == "user":
-        st.markdown(f"**🧑 사용자:** {msg['content']}")
-    elif msg["role"] == "assistant":
-        st.markdown(f"**🤖 GPT:** {msg['content']}")
+for msg in st.session_state.messages:
+    if msg["role"] == "system":
+        continue
+    with st.chat_message("user" if msg["role"] == "user" else "assistant"):
+        st.markdown(msg["content"])
 
-# === 사용자 입력 ===
-user_input = st.text_input(
-    "메시지를 입력하세요:",
-    value=st.session_state.chat_input,
-    key="chat_input_box",
-    disabled=st.session_state.is_thinking  # GPT가 응답 중일 때 비활성화
-)
+# === 입력창 ===
+user_input = st.chat_input("메시지를 입력하세요:", disabled=st.session_state.is_thinking)
 
-# === '물어보기' 버튼 ===
-if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input and st.session_state.api_key:
-    st.session_state.chat_input = user_input
+# === GPT 호출 ===
+if user_input and st.session_state.api_key and st.session_state.client:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    st.session_state.is_thinking = True  # 응답 중 상태 ON
+    st.session_state.is_thinking = True
 
     with st.spinner("🤔 GPT가 생각 중이에요..."):
         try:
-            client = OpenAI(api_key=st.session_state.api_key)
-            response = client.chat.completions.create(
+            response = st.session_state.client.chat.completions.create(
                 model=model,
                 messages=st.session_state.messages,
                 temperature=temperature,
@@ -90,7 +88,6 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             )
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
-            st.session_state.chat_input = ""  # 입력창 초기화
 
         except Exception as e:
             st.error(f"오류 발생: {e}")

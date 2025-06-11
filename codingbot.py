@@ -78,6 +78,11 @@ for msg in st.session_state.messages[1:]:
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:
+    # 응답 완료 후 rerun 시 비우기
+    if "clear_input" in st.session_state and st.session_state.clear_input:
+        st.session_state.chat_input = "" 
+        st.session_state.clear_input = False
+
     user_input = st.text_area(
         "메시지를 입력하세요:",
         key="chat_input",
@@ -104,6 +109,5 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
-            # st.session_state.chat_input = ""
-            # 대신 rerun으로 초기화 유도
+            st.session_state.clear_input = True   # ✅ 다음 렌더링에서 입력창 비우도록 설정
             st.rerun()

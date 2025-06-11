@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.components.v1 import html
 from openai import OpenAI
 from datetime import datetime
 
@@ -43,7 +44,6 @@ default_system_prompt = """
 - 학생이 개념을 자기 말로 설명하거나, 비슷한 예시를 만들거나, 다른 문제에 적용할 수 있을 때까지 도와줘.
 
 학생이 어느 정도 이해했다고 느껴지면 이렇게 마무리해:
-
 "좋아요! 이제 이 코드를 네가 직접 설명할 수 있겠어요. 궁금한 게 더 있으면 언제든 물어봐!"
 """
 
@@ -120,13 +120,11 @@ if dark_mode_toggle != st.session_state.dark_mode:
     st.session_state.dark_mode = dark_mode_toggle
     st.rerun()
 
-# 📌 요약 버튼
 if st.sidebar.button("📌 대화 요약하기"):
     st.session_state.summary_requested = True
     st.session_state.is_thinking = True
     st.rerun()
 
-# 🧹 대화 초기화
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
@@ -164,9 +162,8 @@ apply_theme()
 # === 본문 ===
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
-# 💬 채팅 출력 영역 (자동 스크롤 포함)
+# 채팅 메시지 출력
 chat_messages = st.container()
-
 with chat_messages:
     for msg in st.session_state.messages[1:]:
         if msg["role"] == "user":
@@ -174,18 +171,16 @@ with chat_messages:
         elif msg["role"] == "assistant":
             st.markdown(f"<div class='chat-assistant'>🤖 {msg['content']}</div>", unsafe_allow_html=True)
 
-    # 🚩 자동 스크롤 지점
-    st.markdown("<div id='scroll-to-bottom'></div>", unsafe_allow_html=True)
-
-# 🚀 자동 스크롤 스크립트
-st.markdown("""
-<script>
-    const bottom = document.getElementById("scroll-to-bottom");
-    if (bottom) {
-        bottom.scrollIntoView({behavior: "smooth"});
-    }
-</script>
-""", unsafe_allow_html=True)
+# 자동 스크롤 처리
+html("""
+    <div id="scroll-anchor"></div>
+    <script>
+        const anchor = document.getElementById("scroll-anchor");
+        if (anchor) {
+            anchor.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+    </script>
+""", height=0, width=0)
 
 # 입력창
 if st.session_state.is_thinking:
@@ -202,13 +197,11 @@ else:
         placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
     )
 
-# 💬 사용자 질문 처리
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
     st.session_state.is_thinking = True
     st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
     st.rerun()
 
-# 🤖 GPT 응답 생성
 if st.session_state.is_thinking:
     with st.spinner("GPT가 생각 중입니다..."):
         try:

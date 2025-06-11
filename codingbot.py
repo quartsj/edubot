@@ -79,10 +79,16 @@ if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
     user_input = None
 else:
-    user_input = st.text_input("메시지를 입력하세요:", key="chat_input")  # ✅ value 제거
+    user_input = st.text_area(
+        "메시지를 입력하세요:",
+        value=st.session_state.chat_input,
+        key="chat_input",
+        height=150,
+        placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
+    )
 
 # === GPT 응답 처리 ===
-if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input:
+if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input.strip():
     st.session_state.is_thinking = True
     st.session_state.messages.append({"role": "user", "content": user_input})
 
@@ -105,5 +111,4 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
         finally:
             st.session_state.is_thinking = False
 
-    # ✅ rerun은 마지막에 실행
     st.rerun()

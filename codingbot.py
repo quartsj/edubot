@@ -55,14 +55,17 @@ def apply_theme():
     if st.session_state.dark_mode:
         st.markdown("""
         <style>
+            /* 화면 배경과 텍스트 컬러만 변경 */
             .stApp {
                 background-color: #121212;
                 color: #e0e0e0;
             }
-            .stButton>button, .stTextInput>div>input, .stTextArea>div>textarea {
+            /* 입력창, 텍스트 영역 배경과 글자색 */
+            .stTextInput>div>input, .stTextArea>div>textarea {
                 background-color: #222222;
                 color: #e0e0e0;
             }
+            /* 코드 블록 스타일 */
             pre {
                 background-color: #222222;
                 color: #e0e0e0;
@@ -70,6 +73,7 @@ def apply_theme():
                 border-radius: 8px;
                 overflow-x: auto;
             }
+            /* 사용자/어시스턴트 채팅풍 스타일 */
             .chat-user {
                 background-color: #333a4d;
                 border-radius: 10px;
@@ -82,6 +86,7 @@ def apply_theme():
                 padding: 10px;
                 margin-bottom: 10px;
             }
+            /* 버튼은 스타일 건드리지 않음 */
         </style>
         """, unsafe_allow_html=True)
     else:

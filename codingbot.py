@@ -86,7 +86,7 @@ def apply_theme():
                 padding: 10px;
                 margin-bottom: 10px;
             }
-            /* 버튼은 스타일 건드리지 않음 */
+            /* 버튼 스타일 건드리지 않음 */
         </style>
         """, unsafe_allow_html=True)
     else:
@@ -118,7 +118,10 @@ def apply_theme():
 st.sidebar.title("🔧 설정")
 st.session_state.api_key = st.sidebar.text_input("🔐 OpenAI API Key", type="password", value=st.session_state.api_key)
 model = st.sidebar.selectbox("💬 모델 선택", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1)
-st.session_state.dark_mode = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
+dark_mode_toggle = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
+if dark_mode_toggle != st.session_state.dark_mode:
+    st.session_state.dark_mode = dark_mode_toggle
+    st.rerun()
 
 apply_theme()
 
@@ -134,32 +137,51 @@ if st.session_state.client is None:
 # 대화 초기화 버튼
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
+    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
     st.session_state.chat_input = ""
     st.session_state.is_thinking = False
     st.session_state.clear_input = False
-    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
     st.rerun()
 
-# 대화 저장 버튼
-def save_chat_log():
-    filename = f"chat_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    with open(filename, "w", encoding="utf-8") as f:
-        for msg in st.session_state.messages[1:]:
-            role = "사용자" if msg["role"] == "user" else "GPT"
-            f.write(f"{role}: {msg['content']}\n\n")
-    st.success(f"💾 대화가 `{filename}` 로 저장되었습니다.")
+# 대화 저장용 텍스트 생성 함수
+def get_chat_log_text():
+    chat_log = ""
+    for msg in st.session_state.messages[1:]:
+        role = "사용자" if msg["role"] == "user" else "GPT"
+        chat_log += f"{role}: {msg['content']}\n\n"
+    return chat_log
 
-if st.sidebar.button("💾 대화 저장"):
-    save_chat_log()
+# 사이드바에 다운로드 버튼 추가
+chat_log_text = get_chat_log_text()
+st.sidebar.download_button(
+    label="💾 대화 저장",
+    data=chat_log_text,
+    file_name=f"chat_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+    mime="text/plain",
+)
 
 # === 본문 출력 ===
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
+# 메시지 출력 div에 id 추가해서 JS로 자동 스크롤 가능하게 만듦
+chat_container = """
+<div id="chat-container" style="height:500px; overflow-y:auto; padding:10px; border:1px solid #ddd;">
+{}
+</div>
+<script>
+    var chatContainer = document.getElementById('chat-container');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+</script>
+"""
+
+messages_html = ""
 for msg in st.session_state.messages[1:]:
     if msg["role"] == "user":
-        st.markdown(f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>", unsafe_allow_html=True)
+        messages_html += f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>"
     elif msg["role"] == "assistant":
-        st.markdown(f"<div class='chat-assistant'>🤖 {msg['content']}</div>", unsafe_allow_html=True)
+        messages_html += f"<div class='chat-assistant'>🤖 {msg['content']}</div>"
+
+st.markdown(chat_container.format(messages_html), unsafe_allow_html=True)
 
 # === 입력창 ===
 if st.session_state.is_thinking:

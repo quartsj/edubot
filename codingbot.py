@@ -106,4 +106,4 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.
             st.session_state.is_thinking = False
             # st.session_state.chat_input = ""
             # 대신 rerun으로 초기화 유도
-            st.experimental_rerun()
+            st.rerun()

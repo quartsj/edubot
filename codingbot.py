@@ -164,25 +164,28 @@ apply_theme()
 # === 본문 ===
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
-# 채팅 UI
-chat_container = """
-<div id="chat-container" style="height:500px; overflow-y:auto; padding:10px; border:1px solid #ddd;">
-{}
-</div>
+# 💬 채팅 출력 영역 (자동 스크롤 포함)
+chat_messages = st.container()
+
+with chat_messages:
+    for msg in st.session_state.messages[1:]:
+        if msg["role"] == "user":
+            st.markdown(f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>", unsafe_allow_html=True)
+        elif msg["role"] == "assistant":
+            st.markdown(f"<div class='chat-assistant'>🤖 {msg['content']}</div>", unsafe_allow_html=True)
+
+    # 🚩 자동 스크롤 지점
+    st.markdown("<div id='scroll-to-bottom'></div>", unsafe_allow_html=True)
+
+# 🚀 자동 스크롤 스크립트
+st.markdown("""
 <script>
-    var chatContainer = document.getElementById('chat-container');
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    const bottom = document.getElementById("scroll-to-bottom");
+    if (bottom) {
+        bottom.scrollIntoView({behavior: "smooth"});
+    }
 </script>
-"""
-
-messages_html = ""
-for msg in st.session_state.messages[1:]:
-    if msg["role"] == "user":
-        messages_html += f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>"
-    elif msg["role"] == "assistant":
-        messages_html += f"<div class='chat-assistant'>🤖 {msg['content']}</div>"
-
-st.markdown(chat_container.format(messages_html), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # 입력창
 if st.session_state.is_thinking:
@@ -205,7 +208,7 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.
     st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
     st.rerun()
 
-# 🤖 GPT 응답 생성 (사용자 질문 또는 요약 요청)
+# 🤖 GPT 응답 생성
 if st.session_state.is_thinking:
     with st.spinner("GPT가 생각 중입니다..."):
         try:

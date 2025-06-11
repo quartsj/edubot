@@ -1,8 +1,9 @@
 import streamlit as st
 from openai import OpenAI
+from datetime import datetime
 
 # === 페이지 설정 ===
-st.set_page_config(page_title="GPT-4.1 Mini 챗봇", layout="centered")
+st.set_page_config(page_title="코딩 도우미 코딩봇", layout="centered")
 
 # === 세션 상태 초기화 ===
 if "api_key" not in st.session_state:
@@ -15,6 +16,8 @@ if "is_thinking" not in st.session_state:
     st.session_state.is_thinking = False
 if "client" not in st.session_state:
     st.session_state.client = None
+if "clear_input" not in st.session_state:
+    st.session_state.clear_input = False
 
 # === 시스템 프롬프트 설정 ===
 default_system_prompt = """
@@ -45,69 +48,100 @@ default_system_prompt = """
 - 학생이 수동적으로 듣게 만들지 말고, 계속 질문을 던져서 능동적으로 참여하게 해.
 """
 
+# 초기 system 메시지
 if len(st.session_state.messages) == 0:
     st.session_state.messages.append({"role": "system", "content": default_system_prompt})
 
-# === API Key 입력 ===
+# === 사이드바 설정 ===
 st.sidebar.title("🔐 OpenAI API 설정")
 api_key_input = st.sidebar.text_input("API Key를 입력하세요:", type="password", value=st.session_state.api_key)
 st.session_state.api_key = api_key_input
 
-if api_key_input and st.session_state.client is None:
-    st.session_state.client = OpenAI(api_key=api_key_input)
+if not api_key_input:
+    st.sidebar.warning("⚠️ API Key를 입력해야 챗봇이 작동합니다. 사이드바에서 Key를 입력해주세요.")
+else:
+    if st.session_state.client is None:
+        st.session_state.client = OpenAI(api_key=api_key_input)
 
-# === 모델 선택 ===
+# 모델 선택
 model = st.sidebar.selectbox("모델 선택:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1)
 temperature = 0.7
 
-# === Clear 버튼 ===
+# 대화 초기화
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.chat_input = ""
     st.session_state.is_thinking = False
+    st.success("대화가 초기화되었습니다.")
 
-# === 대화 출력 ===
-st.title("GPT-4.1 Mini 챗봇 🤖")
-for msg in st.session_state.messages[1:]:
-    if msg["role"] == "user":
-        st.markdown(f"**🧑 사용자:** {msg['content']}")
-    elif msg["role"] == "assistant":
-        st.markdown(f"**🤖 GPT:** {msg['content']}")
+# === 대화 저장 ===
+def save_chat_log():
+    filename = f"chat_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        for msg in st.session_state.messages[1:]:
+            role = "사용자" if msg["role"] == "user" else "GPT"
+            f.write(f"{role}: {msg['content']}\n\n")
+    st.success(f"💾 대화가 `{filename}` 파일로 저장되었습니다.")
 
-# === 입력창 ===
+if st.sidebar.button("💾 대화 저장하기"):
+    save_chat_log()
+
+# === 메인 화면 ===
+st.title("🤖 코딩 도우미 코딩봇 ")
+
+# 첫 인사 출력
+if len(st.session_state.messages) == 1:
+    st.markdown("""
+    👋 **안녕하세요! 코딩봇입니다.**
+    
+    코딩 관련해서 궁금한 코드가 있다면 자유롭게 물어보세요!
+    """)
+
+# 대화 출력
+chat_container = st.container()
+with chat_container:
+    for msg in st.session_state.messages[1:]:
+        if msg["role"] == "user":
+            st.markdown(f"<div style='background-color:#f0f0f5;padding:10px;border-radius:10px;margin-bottom:10px'><b>🧑 사용자:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
+        elif msg["role"] == "assistant":
+            st.markdown(f"<div style='background-color:#e8f6ff;padding:10px;border-radius:10px;margin-bottom:10px'><b>🤖 코딩봇:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
+
+# 입력창
 if st.session_state.is_thinking:
-    st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
+    st.info("🤖 코딩봇이 응답 중입니다... 잠시만 기다려주세요.")
 else:
-    # 응답 완료 후 rerun 시 비우기
-    if "clear_input" in st.session_state and st.session_state.clear_input:
-        st.session_state.chat_input = "" 
+    if st.session_state.clear_input:
+        st.session_state.chat_input = ""
         st.session_state.clear_input = False
 
-    user_input = st.text_area(
+    st.text_area(
         "메시지를 입력하세요:",
         key="chat_input",
         height=150,
         placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
     )
 
-# === GPT 응답 처리 ===
+# GPT 응답 처리
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
-    st.session_state.is_thinking = True
-    st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
+    if not api_key_input:
+        st.error("❗ API Key가 필요합니다. 사이드바에서 입력해 주세요.")
+    else:
+        st.session_state.is_thinking = True
+        st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
 
-    with st.spinner("GPT가 생각 중입니다..."):
-        try:
-            response = st.session_state.client.chat.completions.create(
-                model=model,
-                messages=st.session_state.messages,
-                temperature=temperature,
-                max_tokens=500,
-            )
-            reply = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-        except Exception as e:
-            st.error(f"오류 발생: {e}")
-        finally:
-            st.session_state.is_thinking = False
-            st.session_state.clear_input = True   # ✅ 다음 렌더링에서 입력창 비우도록 설정
-            st.rerun()
+        with st.spinner("GPT가 생각 중입니다..."):
+            try:
+                response = st.session_state.client.chat.completions.create(
+                    model=model,
+                    messages=st.session_state.messages,
+                    temperature=temperature,
+                    max_tokens=500,
+                )
+                reply = response.choices[0].message.content
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+            except Exception as e:
+                st.error(f"오류 발생: {e}")
+            finally:
+                st.session_state.is_thinking = False
+                st.session_state.clear_input = True
+                st.rerun()

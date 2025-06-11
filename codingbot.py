@@ -78,7 +78,7 @@ for msg in st.session_state.messages[1:]:
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:
-    st.text_area(
+    user_input = st.text_area(
         "메시지를 입력하세요:",
         key="chat_input",
         height=150,
@@ -104,6 +104,6 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
-            st.session_state.chat_input = ""  # ✅ 입력창 초기화
-
-    st.rerun()  # ✅ 상태 반영 후 리렌더링
+            # st.session_state.chat_input = ""
+            # 대신 rerun으로 초기화 유도
+            st.experimental_rerun()

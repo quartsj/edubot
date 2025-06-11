@@ -1,7 +1,6 @@
 import streamlit as st
 from openai import OpenAI
 from datetime import datetime
-from streamlit.components.v1 import html
 
 # === 페이지 설정 ===
 st.set_page_config(page_title="코딩 도우미 코딩봇", layout="centered")
@@ -21,6 +20,8 @@ if "clear_input" not in st.session_state:
     st.session_state.clear_input = False
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
+if "summary_requested" not in st.session_state:
+    st.session_state.summary_requested = False
 
 # === 시스템 프롬프트 설정 ===
 default_system_prompt = """
@@ -65,8 +66,11 @@ def apply_theme():
                 color: #e0e0e0;
             }
             pre, code {
-                background-color: #1e1e1e !important;
+                background-color: #222222 !important;
                 color: #e0e0e0 !important;
+                padding: 10px;
+                border-radius: 8px;
+                overflow-x: auto;
             }
             .chat-user {
                 background-color: #333a4d;
@@ -116,15 +120,13 @@ if dark_mode_toggle != st.session_state.dark_mode:
     st.session_state.dark_mode = dark_mode_toggle
     st.rerun()
 
-apply_theme()
+# 📌 요약 버튼
+if st.sidebar.button("📌 대화 요약하기"):
+    st.session_state.summary_requested = True
+    st.session_state.is_thinking = True
+    st.rerun()
 
-if not st.session_state.api_key:
-    st.warning("⚠️ OpenAI API 키가 필요합니다. 사이드바에서 입력해 주세요.")
-    st.stop()
-
-if st.session_state.client is None:
-    st.session_state.client = OpenAI(api_key=st.session_state.api_key)
-
+# 🧹 대화 초기화
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
@@ -133,11 +135,15 @@ if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.clear_input = False
     st.rerun()
 
-chat_log_text = ""
-for msg in st.session_state.messages[1:]:
-    role = "사용자" if msg["role"] == "user" else "GPT"
-    chat_log_text += f"{role}: {msg['content']}\n\n"
+# 💾 대화 저장
+def get_chat_log_text():
+    chat_log = ""
+    for msg in st.session_state.messages[1:]:
+        role = "사용자" if msg["role"] == "user" else "GPT"
+        chat_log += f"{role}: {msg['content']}\n\n"
+    return chat_log
 
+chat_log_text = get_chat_log_text()
 st.sidebar.download_button(
     label="💾 대화 저장",
     data=chat_log_text,
@@ -145,32 +151,40 @@ st.sidebar.download_button(
     mime="text/plain",
 )
 
+# === 클라이언트 생성 ===
+if not st.session_state.api_key:
+    st.warning("⚠️ OpenAI API 키가 필요합니다. 사이드바에서 입력해 주세요.")
+    st.stop()
+
+if st.session_state.client is None:
+    st.session_state.client = OpenAI(api_key=st.session_state.api_key)
+
+apply_theme()
+
+# === 본문 ===
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
-# === 대화 표시 ===
-chat_messages_html = ""
-for msg in st.session_state.messages[1:]:
-    role_class = "chat-user" if msg["role"] == "user" else "chat-assistant"
-    icon = "🧑‍💻" if msg["role"] == "user" else "🤖"
-    chat_messages_html += f"<div class='{role_class}'>{icon} {msg['content']}</div>"
-
-st.markdown(f"""
+# 채팅 UI
+chat_container = """
 <div id="chat-container" style="height:500px; overflow-y:auto; padding:10px; border:1px solid #ddd;">
-{chat_messages_html}
+{}
 </div>
-""", unsafe_allow_html=True)
-
-# 자동 스크롤 자바스크립트
-html("""
 <script>
-const chatContainer = window.parent.document.querySelector('#chat-container');
-if (chatContainer) {
+    var chatContainer = document.getElementById('chat-container');
     chatContainer.scrollTop = chatContainer.scrollHeight;
-}
 </script>
-""", height=0)
+"""
 
-# === 입력창 ===
+messages_html = ""
+for msg in st.session_state.messages[1:]:
+    if msg["role"] == "user":
+        messages_html += f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>"
+    elif msg["role"] == "assistant":
+        messages_html += f"<div class='chat-assistant'>🤖 {msg['content']}</div>"
+
+st.markdown(chat_container.format(messages_html), unsafe_allow_html=True)
+
+# 입력창
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:
@@ -178,53 +192,45 @@ else:
         st.session_state.chat_input = ""
         st.session_state.clear_input = False
 
-    st.session_state.chat_input = st.text_area(
+    user_input = st.text_area(
         "메시지를 입력하세요:",
-        value=st.session_state.chat_input,
+        key="chat_input",
         height=150,
         placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
     )
 
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
-            st.session_state.is_thinking = True
-            st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
+# 💬 사용자 질문 처리
+if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
+    st.session_state.is_thinking = True
+    st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
+    st.rerun()
 
-            with st.spinner("GPT가 생각 중입니다..."):
-                try:
-                    response = st.session_state.client.chat.completions.create(
-                        model=model,
-                        messages=st.session_state.messages,
-                        temperature=0.7,
-                        max_tokens=500,
-                    )
-                    reply = response.choices[0].message.content
-                    st.session_state.messages.append({"role": "assistant", "content": reply})
-                except Exception as e:
-                    st.error(f"오류 발생: {e}")
-                finally:
-                    st.session_state.is_thinking = False
-                    st.session_state.clear_input = True
-                    st.rerun()
+# 🤖 GPT 응답 생성 (사용자 질문 또는 요약 요청)
+if st.session_state.is_thinking:
+    with st.spinner("GPT가 생각 중입니다..."):
+        try:
+            if st.session_state.summary_requested:
+                st.session_state.messages.append({
+                    "role": "user",
+                    "content": "지금까지의 대화를 학생이 복습할 수 있도록 간단하고 쉽게 요약해줘."
+                })
 
-    with col2:
-        if st.button("📝 요약"):
-            st.session_state.is_thinking = True
-            with st.spinner("요약 중입니다..."):
-                try:
-                    summary_prompt = "지금까지의 대화를 학생이 복습할 수 있도록 간결하게 요약해줘."
-                    messages = st.session_state.messages + [{"role": "user", "content": summary_prompt}]
-                    response = st.session_state.client.chat.completions.create(
-                        model=model,
-                        messages=messages,
-                        temperature=0.5,
-                        max_tokens=500,
-                    )
-                    summary = response.choices[0].message.content
-                    st.session_state.messages.append({"role": "assistant", "content": summary})
-                except Exception as e:
-                    st.error(f"요약 오류: {e}")
-                finally:
-                    st.session_state.is_thinking = False
-                    st.rerun()
+            response = st.session_state.client.chat.completions.create(
+                model=model,
+                messages=st.session_state.messages,
+                temperature=0.7,
+                max_tokens=500,
+            )
+            reply = response.choices[0].message.content
+
+            if st.session_state.summary_requested:
+                reply = f"📌 요약 결과:\n\n{reply}"
+                st.session_state.summary_requested = False
+
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+        except Exception as e:
+            st.error(f"오류 발생: {e}")
+        finally:
+            st.session_state.is_thinking = False
+            st.session_state.clear_input = True
+            st.rerun()

@@ -1,7 +1,7 @@
 import streamlit as st
-from streamlit.components.v1 import html
 from openai import OpenAI
 from datetime import datetime
+from streamlit.components.v1 import html
 
 # === 페이지 설정 ===
 st.set_page_config(page_title="코딩 도우미 코딩봇", layout="centered")
@@ -44,6 +44,7 @@ default_system_prompt = """
 - 학생이 개념을 자기 말로 설명하거나, 비슷한 예시를 만들거나, 다른 문제에 적용할 수 있을 때까지 도와줘.
 
 학생이 어느 정도 이해했다고 느껴지면 이렇게 마무리해:
+
 "좋아요! 이제 이 코드를 네가 직접 설명할 수 있겠어요. 궁금한 게 더 있으면 언제든 물어봐!"
 """
 
@@ -133,7 +134,6 @@ if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.clear_input = False
     st.rerun()
 
-# 💾 대화 저장
 def get_chat_log_text():
     chat_log = ""
     for msg in st.session_state.messages[1:]:
@@ -149,7 +149,6 @@ st.sidebar.download_button(
     mime="text/plain",
 )
 
-# === 클라이언트 생성 ===
 if not st.session_state.api_key:
     st.warning("⚠️ OpenAI API 키가 필요합니다. 사이드바에서 입력해 주세요.")
     st.stop()
@@ -159,30 +158,27 @@ if st.session_state.client is None:
 
 apply_theme()
 
-# === 본문 ===
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
-# 채팅 메시지 출력
-chat_messages = st.container()
-with chat_messages:
+with st.container():
+    messages_html = ""
     for msg in st.session_state.messages[1:]:
         if msg["role"] == "user":
-            st.markdown(f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>", unsafe_allow_html=True)
+            messages_html += f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>"
         elif msg["role"] == "assistant":
-            st.markdown(f"<div class='chat-assistant'>🤖 {msg['content']}</div>", unsafe_allow_html=True)
+            messages_html += f"<div class='chat-assistant'>🤖 {msg['content']}</div>"
+    st.markdown(messages_html, unsafe_allow_html=True)
 
-# 자동 스크롤 처리
-html("""
-    <div id="scroll-anchor"></div>
-    <script>
-        const anchor = document.getElementById("scroll-anchor");
-        if (anchor) {
-            anchor.scrollIntoView({ behavior: "smooth", block: "end" });
-        }
-    </script>
-""", height=0, width=0)
+    html("""
+        <div id="scroll-anchor"></div>
+        <script>
+            const anchor = document.getElementById("scroll-anchor");
+            if (anchor) {
+                anchor.scrollIntoView({ behavior: "smooth", block: "end" });
+            }
+        </script>
+    """, height=0)
 
-# 입력창
 if st.session_state.is_thinking:
     st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:

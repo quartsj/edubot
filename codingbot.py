@@ -148,4 +148,4 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.
             finally:
                 st.session_state.is_thinking = False
                 st.session_state.clear_input = True
-                st.experimental_rerun()
+                st.rerun()

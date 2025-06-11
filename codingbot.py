@@ -67,30 +67,28 @@ if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.is_thinking = False
 
 # === 대화 출력 ===
-st.title("코딩 도우미 코딩봇🤖")
+st.title("GPT-4.1 Mini 챗봇 🤖")
 for msg in st.session_state.messages[1:]:
     if msg["role"] == "user":
         st.markdown(f"**🧑 사용자:** {msg['content']}")
     elif msg["role"] == "assistant":
-        st.markdown(f"**🤖 코딩봇:** {msg['content']}")
+        st.markdown(f"**🤖 GPT:** {msg['content']}")
 
 # === 입력창 ===
 if st.session_state.is_thinking:
-    st.info("🤖 코딩봇이 응답 중입니다... 잠시만 기다려주세요.")
-    user_input = None
+    st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:
-    user_input = st.text_area(
+    st.text_area(
         "메시지를 입력하세요:",
-        value=st.session_state.chat_input,
         key="chat_input",
         height=150,
         placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
     )
 
 # === GPT 응답 처리 ===
-if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and user_input.strip():
+if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
     st.session_state.is_thinking = True
-    st.session_state.messages.append({"role": "user", "content": user_input})
+    st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
 
     with st.spinner("GPT가 생각 중입니다..."):
         try:
@@ -102,13 +100,10 @@ if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and use
             )
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
-
-            # ✅ 입력창 상태 초기화
-            st.session_state.chat_input = ""
-
         except Exception as e:
             st.error(f"오류 발생: {e}")
         finally:
             st.session_state.is_thinking = False
+            st.session_state.chat_input = ""  # ✅ 입력창 초기화
 
-    st.rerun()
+    st.rerun()  # ✅ 상태 반영 후 리렌더링

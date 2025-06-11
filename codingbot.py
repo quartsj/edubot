@@ -18,6 +18,10 @@ if "client" not in st.session_state:
     st.session_state.client = None
 if "clear_input" not in st.session_state:
     st.session_state.clear_input = False
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+if "summary_mode" not in st.session_state:
+    st.session_state.summary_mode = False
 
 # === 시스템 프롬프트 설정 ===
 default_system_prompt = """
@@ -56,6 +60,70 @@ default_system_prompt = """
 if len(st.session_state.messages) == 0:
     st.session_state.messages.append({"role": "system", "content": default_system_prompt})
 
+# === 다크모드 설정 ===
+def apply_theme():
+    if st.session_state.dark_mode:
+        dark_css = """
+        <style>
+            .main, .block-container {
+                background-color: #121212;
+                color: #e0e0e0;
+            }
+            textarea, .stTextArea > div > textarea {
+                background-color: #222222;
+                color: #e0e0e0;
+            }
+            .stButton>button {
+                background-color: #333333;
+                color: #e0e0e0;
+            }
+            .chat-user, .chat-assistant {
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .chat-user {
+                background-color: #333a4d;
+            }
+            .chat-assistant {
+                background-color: #003a6c;
+            }
+            pre {
+                background-color: #222222;
+                color: #e0e0e0;
+                padding: 10px;
+                border-radius: 8px;
+                overflow-x: auto;
+            }
+        </style>
+        """
+        st.markdown(dark_css, unsafe_allow_html=True)
+    else:
+        light_css = """
+        <style>
+            pre {
+                background-color: #f5f5f5;
+                color: #333333;
+                padding: 10px;
+                border-radius: 8px;
+                overflow-x: auto;
+            }
+            .chat-user {
+                background-color: #f0f0f5;
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .chat-assistant {
+                background-color: #e8f6ff;
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+        </style>
+        """
+        st.markdown(light_css, unsafe_allow_html=True)
+
 # === 사이드바 설정 ===
 st.sidebar.title("🔐 OpenAI API 설정")
 api_key_input = st.sidebar.text_input("API Key를 입력하세요:", type="password", value=st.session_state.api_key)
@@ -71,11 +139,20 @@ else:
 model = st.sidebar.selectbox("모델 선택:", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1)
 temperature = 0.7
 
+# 다크모드 토글
+dark_mode_toggle = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
+if dark_mode_toggle != st.session_state.dark_mode:
+    st.session_state.dark_mode = dark_mode_toggle
+    st.experimental_rerun()
+
+apply_theme()
+
 # 대화 초기화
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
     st.session_state.chat_input = ""
     st.session_state.is_thinking = False
+    st.session_state.summary_mode = False
     st.success("대화가 초기화되었습니다.")
 
 # === 대화 저장 ===
@@ -90,62 +167,28 @@ def save_chat_log():
 if st.sidebar.button("💾 대화 저장하기"):
     save_chat_log()
 
-# === 메인 화면 ===
-st.title("🤖 코딩 도우미 코딩봇 ")
+# === 대화 요약 요청 함수 ===
+def request_summary():
+    if len(st.session_state.messages) <= 1:
+        st.warning("요약할 대화가 없습니다.")
+        return
 
-# 첫 인사 출력
-if len(st.session_state.messages) == 1:
-    st.markdown("""
-    👋 **안녕하세요! 코딩봇입니다.**
-    
-    코딩 관련해서 궁금한 코드가 있다면 자유롭게 물어보세요!
-    """)
-
-# 대화 출력
-chat_container = st.container()
-with chat_container:
-    for msg in st.session_state.messages[1:]:
-        if msg["role"] == "user":
-            st.markdown(f"<div style='background-color:#f0f0f5;padding:10px;border-radius:10px;margin-bottom:10px'><b>🧑 사용자:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
-        elif msg["role"] == "assistant":
-            st.markdown(f"<div style='background-color:#e8f6ff;padding:10px;border-radius:10px;margin-bottom:10px'><b>🤖 코딩봇:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
-
-# 입력창
-if st.session_state.is_thinking:
-    st.info("🤖 코딩봇이 응답 중입니다... 잠시만 기다려주세요.")
-else:
-    if st.session_state.clear_input:
-        st.session_state.chat_input = ""
-        st.session_state.clear_input = False
-
-    st.text_area(
-        "메시지를 입력하세요:",
-        key="chat_input",
-        height=150,
-        placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
-    )
-
-# GPT 응답 처리
-if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
-    if not api_key_input:
-        st.error("❗ API Key가 필요합니다. 사이드바에서 입력해 주세요.")
-    else:
-        st.session_state.is_thinking = True
-        st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
-
-        with st.spinner("GPT가 생각 중입니다..."):
-            try:
-                response = st.session_state.client.chat.completions.create(
-                    model=model,
-                    messages=st.session_state.messages,
-                    temperature=temperature,
-                    max_tokens=500,
-                )
-                reply = response.choices[0].message.content
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except Exception as e:
-                st.error(f"오류 발생: {e}")
-            finally:
-                st.session_state.is_thinking = False
-                st.session_state.clear_input = True
-                st.rerun()
+    st.session_state.is_thinking = True
+    # 시스템 프롬프트에 요약용 메시지 추가
+    summary_prompt = {
+        "role": "system",
+        "content": "이전 대화를 요약해서 간략하게 정리해줘. 핵심 내용만 포함하고 학생에게 도움이 되도록 작성해줘."
+    }
+    messages_for_summary = [st.session_state.messages[0], summary_prompt] + st.session_state.messages[1:]
+    try:
+        response = st.session_state.client.chat.completions.create(
+            model=model,
+            messages=messages_for_summary,
+            temperature=0.3,
+            max_tokens=300,
+        )
+        summary = response.choices[0].message.content
+        # 대화에 요약 메시지 추가 (assistant 역할)
+        st.session_state.messages.append({"role": "assistant", "content": f"📝 대화 요약:\n\n{summary}"})
+    except Exception as e:
+        st.error(f"요약 중 오류 발생: {e}")

@@ -143,7 +143,7 @@ temperature = 0.7
 dark_mode_toggle = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
 if dark_mode_toggle != st.session_state.dark_mode:
     st.session_state.dark_mode = dark_mode_toggle
-    st.experimental_rerun()
+    st.rerun()
 
 apply_theme()
 

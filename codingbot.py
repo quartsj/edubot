@@ -7,22 +7,19 @@ from streamlit.components.v1 import html
 st.set_page_config(page_title="코딩 도우미 코딩봇", layout="centered")
 
 # === 세션 상태 초기화 ===
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "chat_input" not in st.session_state:
-    st.session_state.chat_input = ""
-if "is_thinking" not in st.session_state:
-    st.session_state.is_thinking = False
-if "client" not in st.session_state:
-    st.session_state.client = None
-if "clear_input" not in st.session_state:
-    st.session_state.clear_input = False
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
-if "summary_requested" not in st.session_state:
-    st.session_state.summary_requested = False
+state_defaults = {
+    "api_key": "",
+    "messages": [],
+    "chat_input": "",
+    "is_thinking": False,
+    "client": None,
+    "clear_input": False,
+    "dark_mode": False,
+    "summary_requested": False,
+}
+for key, value in state_defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # === 시스템 프롬프트 설정 ===
 default_system_prompt = """
@@ -48,78 +45,38 @@ default_system_prompt = """
 "좋아요! 이제 이 코드를 네가 직접 설명할 수 있겠어요. 궁금한 게 더 있으면 언제든 물어봐!"
 """
 
-# === 초기 메시지 설정 ===
 if len(st.session_state.messages) == 0:
     st.session_state.messages.append({"role": "system", "content": default_system_prompt})
-    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
+    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊", "time": datetime.now()})
 
 # === 다크모드 CSS 적용 ===
 def apply_theme():
-    if st.session_state.dark_mode:
-        st.markdown("""
+    dark = st.session_state.dark_mode
+    css = """
         <style>
-            .stApp {
-                background-color: #121212;
-                color: #e0e0e0;
-            }
-            .stTextInput>div>input, .stTextArea>div>textarea {
-                background-color: #222222;
-                color: #e0e0e0;
-            }
+            .stApp { background-color: %s; color: %s; }
+            .chat-box { background-color: %s; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+            .chat-time { font-size: 0.75rem; opacity: 0.6; }
             pre, code {
-                background-color: #222222 !important;
-                color: #e0e0e0 !important;
-                padding: 10px;
-                border-radius: 8px;
+                background-color: %s !important; color: %s !important;
+                padding: 10px; border-radius: 8px;
                 overflow-x: auto;
             }
-            .chat-user {
-                background-color: #333a4d;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-            .chat-assistant {
-                background-color: #003a6c;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
         </style>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <style>
-            pre, code {
-                background-color: #f5f5f5;
-                color: #333333;
-                padding: 10px;
-                border-radius: 8px;
-                overflow-x: auto;
-            }
-            .chat-user {
-                background-color: #f0f0f5;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-            .chat-assistant {
-                background-color: #e8f6ff;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-        </style>
-        """, unsafe_allow_html=True)
+    """ % (
+        "#121212" if dark else "white",
+        "#e0e0e0" if dark else "#333333",
+        "#333a4d" if dark else "#f0f0f5",
+        "#222222" if dark else "#f5f5f5",
+        "#e0e0e0" if dark else "#333333"
+    )
+    st.markdown(css, unsafe_allow_html=True)
 
-# === 사이드바 설정 ===
+# === 사이드바 ===
 st.sidebar.title("🔧 설정")
 st.session_state.api_key = st.sidebar.text_input("🔐 OpenAI API Key", type="password", value=st.session_state.api_key)
 model = st.sidebar.selectbox("💬 모델 선택", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1)
-dark_mode_toggle = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
-if dark_mode_toggle != st.session_state.dark_mode:
-    st.session_state.dark_mode = dark_mode_toggle
-    st.rerun()
+st.session_state.dark_mode = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
 
 if st.sidebar.button("📌 대화 요약하기"):
     st.session_state.summary_requested = True
@@ -128,17 +85,19 @@ if st.sidebar.button("📌 대화 요약하기"):
 
 if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.messages = [{"role": "system", "content": default_system_prompt}]
-    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
+    st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊", "time": datetime.now()})
     st.session_state.chat_input = ""
     st.session_state.is_thinking = False
     st.session_state.clear_input = False
     st.rerun()
 
+# === 대화 저장 기능 ===
 def get_chat_log_text():
     chat_log = ""
     for msg in st.session_state.messages[1:]:
         role = "사용자" if msg["role"] == "user" else "GPT"
-        chat_log += f"{role}: {msg['content']}\n\n"
+        time_str = msg.get("time", datetime.now()).strftime("%Y-%m-%d %H:%M")
+        chat_log += f"[{time_str}] {role}: {msg['content']}\n\n"
     return chat_log
 
 chat_log_text = get_chat_log_text()
@@ -149,6 +108,7 @@ st.sidebar.download_button(
     mime="text/plain",
 )
 
+# === API Key 확인 ===
 if not st.session_state.api_key:
     st.warning("⚠️ OpenAI API 키가 필요합니다. 사이드바에서 입력해 주세요.")
     st.stop()
@@ -156,55 +116,73 @@ if not st.session_state.api_key:
 if st.session_state.client is None:
     st.session_state.client = OpenAI(api_key=st.session_state.api_key)
 
+# === 테마 적용 ===
 apply_theme()
 
 st.title("🤖 GPT-4.1 Mini 코딩봇")
 
+# === 대화 출력 ===
 with st.container():
-    messages_html = ""
     for msg in st.session_state.messages[1:]:
-        if msg["role"] == "user":
-            messages_html += f"<div class='chat-user'>🧑‍💻 {msg['content']}</div>"
-        elif msg["role"] == "assistant":
-            messages_html += f"<div class='chat-assistant'>🤖 {msg['content']}</div>"
-    st.markdown(messages_html, unsafe_allow_html=True)
+        role = "🧑‍💻 사용자" if msg["role"] == "user" else "🤖 GPT"
+        time_str = msg.get("time", datetime.now()).strftime("%H:%M:%S")
+        css_class = "chat-box"
+        st.markdown(
+            f"<div class='{css_class}'><strong>{role}</strong><br>{msg['content']}<div class='chat-time'>{time_str}</div></div>",
+            unsafe_allow_html=True
+        )
 
-    html("""
-        <div id="scroll-anchor"></div>
-        <script>
-            const anchor = document.getElementById("scroll-anchor");
-            if (anchor) {
-                anchor.scrollIntoView({ behavior: "smooth", block: "end" });
-            }
-        </script>
-    """, height=0)
+# === 자동 스크롤 ===
+html("""
+    <div id="scroll-anchor"></div>
+    <script>
+        const anchor = document.getElementById("scroll-anchor");
+        if (anchor) {
+            anchor.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+    </script>
+""", height=0)
 
-if st.session_state.is_thinking:
-    st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
-else:
-    if st.session_state.clear_input:
-        st.session_state.chat_input = ""
-        st.session_state.clear_input = False
+# === 입력 폼 ===
+if st.session_state.clear_input:
+    st.session_state.chat_input = ""
+    st.session_state.clear_input = False
 
-    user_input = st.text_area(
-        "메시지를 입력하세요:",
-        key="chat_input",
-        height=150,
-        placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
-    )
+# 자동 포커스 스크립트 (textarea에 포커스)
+html("""
+    <script>
+        window.onload = function() {
+            const ta = document.querySelector('textarea[aria-label="메시지를 입력하세요:"]');
+            if (ta) ta.focus();
+        }
+    </script>
+""", height=0)
+
+user_input = st.text_area(
+    "메시지를 입력하세요:",
+    key="chat_input",
+    height=150,
+    placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
+)
 
 if st.button("💬 물어보기", disabled=st.session_state.is_thinking) and st.session_state.chat_input.strip():
     st.session_state.is_thinking = True
-    st.session_state.messages.append({"role": "user", "content": st.session_state.chat_input})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": st.session_state.chat_input,
+        "time": datetime.now()
+    })
     st.rerun()
 
+# === GPT 응답 처리 ===
 if st.session_state.is_thinking:
     with st.spinner("GPT가 생각 중입니다..."):
         try:
             if st.session_state.summary_requested:
                 st.session_state.messages.append({
                     "role": "user",
-                    "content": "지금까지의 대화를 학생이 복습할 수 있도록 간단하고 쉽게 요약해줘."
+                    "content": "지금까지의 대화를 학생이 복습할 수 있도록 간단하고 쉽게 요약해줘.",
+                    "time": datetime.now()
                 })
 
             response = st.session_state.client.chat.completions.create(
@@ -219,7 +197,11 @@ if st.session_state.is_thinking:
                 reply = f"📌 요약 결과:\n\n{reply}"
                 st.session_state.summary_requested = False
 
-            st.session_state.messages.append({"role": "assistant", "content": reply})
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": reply,
+                "time": datetime.now()
+            })
         except Exception as e:
             st.error(f"오류 발생: {e}")
         finally:

@@ -67,16 +67,16 @@ if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.is_thinking = False
 
 # === 대화 출력 ===
-st.title("GPT-4.1 Mini 챗봇 🤖")
+st.title("코딩 도우미 코딩봇🤖")
 for msg in st.session_state.messages[1:]:
     if msg["role"] == "user":
         st.markdown(f"**🧑 사용자:** {msg['content']}")
     elif msg["role"] == "assistant":
-        st.markdown(f"**🤖 GPT:** {msg['content']}")
+        st.markdown(f"**🤖 코딩봇:** {msg['content']}")
 
 # === 입력창 ===
 if st.session_state.is_thinking:
-    st.info("🤖 GPT가 응답 중입니다... 잠시만 기다려주세요.")
+    st.info("🤖 코딩봇이 응답 중입니다... 잠시만 기다려주세요.")
     user_input = None
 else:
     user_input = st.text_area(

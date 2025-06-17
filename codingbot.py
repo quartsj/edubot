@@ -4,7 +4,7 @@ from datetime import datetime
 from streamlit.components.v1 import html
 
 # === 페이지 설정 ===
-st.set_page_config(page_title="GPT-4.1 Mini 코딩 도우미", layout="centered")
+st.set_page_config(page_title="ChatGPT 코딩 도우미", layout="centered")
 
 # === 세션 상태 초기화 ===
 if "api_key" not in st.session_state:

@@ -4,7 +4,7 @@ from datetime import datetime
 from streamlit.components.v1 import html
 
 # === 페이지 설정 ===
-st.set_page_config(page_title="ChatGPT 코딩 도우미", layout="centered")
+st.set_page_config(page_title="GPT-4.1 Mini 코딩 도우미", layout="centered")
 
 # === 세션 상태 초기화 ===
 if "api_key" not in st.session_state:
@@ -59,7 +59,7 @@ if len(st.session_state.messages) == 0:
     st.session_state.messages.append({"role": "system", "content": get_system_prompt()})
     st.session_state.messages.append({"role": "assistant", "content": "안녕하세요! 코딩 도우미 챗봇 **에듀봇**입니다.\n알고 싶은 코드가 있다면 편하게 물어보세요 😊"})
 
-# === 다크모드 CSS 적용 ===
+# === 테마 적용 ===
 def apply_theme():
     if st.session_state.dark_mode:
         st.markdown("""
@@ -94,8 +94,16 @@ apply_theme()
 st.sidebar.title("🔧 설정")
 st.session_state.api_key = st.sidebar.text_input("🔐 OpenAI API Key", type="password", value=st.session_state.api_key)
 model = st.sidebar.selectbox("💬 모델 선택", ["gpt-3.5-turbo", "gpt-4.1-mini"], index=1)
-
 temperature = st.sidebar.slider("🎨 창의성 (temperature)", 0.0, 1.0, 0.7, step=0.1)
+
+# 사용자 수준 선택
+st.sidebar.markdown("### 👤 사용자 수준 설정")
+selected_level = st.sidebar.radio("모드를 선택하세요", ["초급자", "중급자"], index=0 if st.session_state.user_level == "초급자" else 1)
+if selected_level != st.session_state.user_level:
+    st.session_state.user_level = selected_level
+    st.session_state.messages = [{"role": "system", "content": get_system_prompt()}]
+    st.session_state.messages.append({"role": "assistant", "content": f"{selected_level} 모드로 변경했어요. 궁금한 코드가 있으면 물어보세요!"})
+    st.rerun()
 
 dark_mode_toggle = st.sidebar.checkbox("🌙 다크모드", value=st.session_state.dark_mode)
 if dark_mode_toggle != st.session_state.dark_mode:
@@ -114,25 +122,7 @@ if st.sidebar.button("🧹 대화 초기화"):
     st.session_state.clear_input = False
     st.rerun()
 
-# === 사용자 수준 설정 버튼 ===
-st.markdown("### 👤 사용자 수준 설정")
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("👶 초급자 모드"):
-        st.session_state.user_level = "초급자"
-        st.session_state.messages = [{"role": "system", "content": get_system_prompt()}]
-        st.session_state.messages.append({"role": "assistant", "content": "초급자 모드로 변경했어요. 어떤 코드가 궁금한가요? 😊"})
-        st.rerun()
-with col2:
-    if st.button("🧠 중급자 모드"):
-        st.session_state.user_level = "중급자"
-        st.session_state.messages = [{"role": "system", "content": get_system_prompt()}]
-        st.session_state.messages.append({"role": "assistant", "content": "중급자 모드로 변경했어요. 어떤 코드가 궁금한가요? 😊"})
-        st.rerun()
-
-st.markdown(f"현재 모드: **{st.session_state.user_level}**")
-
-# === 대화 저장 ===
+# === 대화 저장 버튼 ===
 def get_chat_log_text():
     chat_log = ""
     for msg in st.session_state.messages[1:]:
@@ -140,10 +130,9 @@ def get_chat_log_text():
         chat_log += f"{role}: {msg['content']}\n\n"
     return chat_log
 
-chat_log_text = get_chat_log_text()
 st.sidebar.download_button(
     label="💾 대화 저장",
-    data=chat_log_text,
+    data=get_chat_log_text(),
     file_name=f"chat_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
     mime="text/plain",
 )
@@ -156,8 +145,8 @@ if not st.session_state.api_key:
 if st.session_state.client is None:
     st.session_state.client = OpenAI(api_key=st.session_state.api_key)
 
-# === 이전 대화 출력 ===
-st.title("🤖 ChatGPT Mini 코딩 도우미")
+# === 본문 영역 ===
+st.title("🤖 GPT-4.1 Mini 코딩 도우미")
 
 messages_html = ""
 for msg in st.session_state.messages[1:]:
@@ -185,12 +174,7 @@ if st.session_state.clear_input:
 if st.session_state.is_thinking:
     st.info("GPT가 응답 중입니다... 잠시만 기다려주세요.")
 else:
-    user_input = st.text_area(
-        "메시지를 입력하세요:",
-        key="chat_input",
-        height=150,
-        placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.",
-    )
+    user_input = st.text_area("메시지를 입력하세요:", key="chat_input", height=150, placeholder="코드나 질문을 입력하세요. Shift+Enter로 줄바꿈 할 수 있어요.")
     if st.button("💬 질문하기", disabled=st.session_state.is_thinking) and user_input.strip():
         st.session_state.chat_input = user_input
         st.session_state.messages.append({"role": "user", "content": user_input})
@@ -206,7 +190,6 @@ if st.session_state.is_thinking:
                     "role": "user",
                     "content": "지금까지의 대화를 학생이 복습할 수 있도록 간단하고 쉽게 요약해줘."
                 })
-                # 시스템 프롬프트 갱신
                 st.session_state.messages[0] = {"role": "system", "content": get_system_prompt()}
 
             response = st.session_state.client.chat.completions.create(
